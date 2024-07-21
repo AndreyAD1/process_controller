@@ -3,8 +3,16 @@ import os
 import time
 from threading import Thread
 
-task_counter_lock = mp.Lock()
-runner_counter_lock = mp.Lock()
+task_counter_lock = None
+runner_counter_lock = None
+
+
+def init_pool_process(task_lock, runner_lock):
+    print("init pool processes")
+    global task_counter_lock
+    global runner_counter_lock
+    task_counter_lock = task_lock
+    runner_counter_lock = runner_lock
 
 
 def get_test_task(timeout):
@@ -20,32 +28,18 @@ def another_task(a, b, c):
 
 class ProcessController:
     def __init__(self):
-        self.task_counter_lock = mp.Lock()
-        self.runner_counter_lock = mp.Lock()
         self.task_counter = 0
         self.runner_counter = 0
         self.max_timeout = None
         self.max_process_number = None
         self._work_process = None
 
-    @staticmethod
-    def _init_pool_process(task_lock, runner_lock):
-        global task_counter_lock
-        global runner_counter_lock
-        task_counter_lock = task_lock
-        runner_counter_lock = runner_lock
-
     def set_max_proc(self, max_process):
         self.max_process_number = max_process
 
-    def _complete_runner(self, _):
-        runner_counter_lock.acquire()
-        self.runner_counter -= 1
-        runner_counter_lock.release()
-
+    @staticmethod
     def _error_callback(self, error):
         print("ERROR: ", error)
-        self._complete_runner(error)
 
     def runner(self, func, *args):
         task_counter_lock.acquire()
@@ -60,17 +54,19 @@ class ProcessController:
             runner_counter_lock.release()
 
         task_thread.join(self.max_timeout)
+        runner_counter_lock.acquire()
+        self.runner_counter -= 1
+        runner_counter_lock.release()
 
     def _start(self, tasks):
         with mp.Pool(
             processes=self.max_process_number,
-            initializer=self._init_pool_process,
-            initargs=(self.task_counter_lock, self.runner_counter_lock),
+            initializer=init_pool_process,
+            initargs=(mp.Lock(), mp.Lock())
         ) as process_pool:
             result = process_pool.starmap_async(
                 self.runner,
                 tasks,
-                callback=self._complete_runner,
                 error_callback=self._error_callback
             )
             result.wait()
