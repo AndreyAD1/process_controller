@@ -1,6 +1,7 @@
 import multiprocessing as mp
 import os
 import time
+from threading import Thread
 
 
 def get_test_task(timeout):
@@ -37,20 +38,19 @@ def runner(func, *args):
     task_counter_lock.acquire()
     runner_counter_lock.acquire()
     try:
-        process = mp.Process(target=func, args=args)
-        process.daemon = False
-        process.start()
+        task_thread = Thread(target=func, args=args)
+        task_thread.start()
         task_counter -= 1
         runner_counter += 1
     finally:
         task_counter_lock.release()
         runner_counter_lock.release()
 
-    process.join(MAX_TIMEOUT)
+    task_thread.join(MAX_TIMEOUT)
 
 
 def main():
-    with mp.Pool(processes=4) as process_pool:
+    with mp.Pool(processes=3) as process_pool:
         result = process_pool.starmap_async(
             runner,
             tasks,
