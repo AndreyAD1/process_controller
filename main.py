@@ -34,6 +34,10 @@ class ProcessController:
         self.runner_counter -= 1
         self.runner_counter_lock.release()
 
+    def _error_callback(self, error):
+        print("ERROR: ", error)
+        self._complete_runner(error)
+
     def runner(self, func, *args):
         self.task_counter_lock.acquire()
         self.runner_counter_lock.acquire()
@@ -57,7 +61,7 @@ class ProcessController:
             self.runner,
             updated_tasks,
             callback=self._complete_runner,
-            error_callback=self._complete_runner
+            error_callback=self._error_callback
         )
         self._process_pool = process_pool
         self._result = result
