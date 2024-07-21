@@ -15,20 +15,6 @@ def another_task(a, b, c):
     print("calculation result: ", a * b - c)
 
 
-# task_counter_lock = mp.Lock()
-# runner_counter_lock = mp.Lock()
-# MAX_TIMEOUT = 4
-# tasks = [
-#     (get_test_task, 5),
-#     (get_test_task, 2,),
-#     (get_test_task, 1,),
-#     (get_test_task, 3,),
-#     (get_test_task, 0.5,)
-# ]
-# task_counter = len(tasks)
-# runner_counter = 0
-
-
 class ProcessController:
     def __init__(self):
         self.task_counter_lock = mp.Lock()
@@ -43,7 +29,7 @@ class ProcessController:
     def set_max_proc(self, max_process):
         self.max_process_number = max_process
 
-    def _complete_runner(self):
+    def _complete_runner(self, _):
         self.runner_counter_lock.acquire()
         self.runner_counter -= 1
         self.runner_counter_lock.release()
@@ -64,7 +50,8 @@ class ProcessController:
 
     def start(self, tasks, max_timeout):
         self.max_timeout = max_timeout
-        updated_tasks = ...
+        self.task_counter = len(tasks)
+        updated_tasks = [(t[0], *t[1]) for t in tasks]
         process_pool = mp.Pool(processes=self.max_process_number)
         result = process_pool.starmap_async(
             self.runner,
@@ -76,7 +63,7 @@ class ProcessController:
         self._result = result
 
     def wait(self):
-        self._result.join()
+        self._result.wait()
         self._process_pool.close()
         self._process_pool.join()
 
@@ -100,13 +87,12 @@ def main():
         4
     )
     time.sleep(1)
-    (process_controller.wait_count())
-    (process_controller.alive_count())
-    time.sleep(2)
-    (process_controller.wait_count())
-    (process_controller.alive_count())
+    print(process_controller.wait_count())
+    print(process_controller.alive_count())
+    time.sleep(3)
+    print(process_controller.wait_count())
+    print(process_controller.alive_count())
     process_controller.wait()
-
 
 
 if __name__ == "__main__":
