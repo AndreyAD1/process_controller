@@ -1,18 +1,7 @@
 import multiprocessing as mp
 import os
+import threading
 import time
-from threading import Thread
-
-task_counter_lock = None
-runner_counter_lock = None
-
-
-def init_pool_process(task_lock, runner_lock):
-    print("init pool processes")
-    global task_counter_lock
-    global runner_counter_lock
-    task_counter_lock = task_lock
-    runner_counter_lock = runner_lock
 
 
 def get_test_task(timeout):
@@ -28,65 +17,36 @@ def another_task(a, b, c):
 
 class ProcessController:
     def __init__(self):
-        self.task_counter = 0
-        self.runner_counter = 0
-        self.max_timeout = None
         self.max_process_number = None
-        self._work_process = None
+        self.wait_counter = None
+        self.task_queue = None
+        self.publisher = None
 
-    def set_max_proc(self, max_process):
-        self.max_process_number = max_process
+    def set_max_proc(self, process_number):
+        self.max_process_number = process_number
 
-    @staticmethod
-    def _error_callback(self, error):
-        print("ERROR: ", error)
-
-    def runner(self, func, *args):
-        task_counter_lock.acquire()
-        runner_counter_lock.acquire()
-        try:
-            task_thread = Thread(target=func, args=args)
-            task_thread.start()
-            self.task_counter -= 1
-            self.runner_counter += 1
-        finally:
-            task_counter_lock.release()
-            runner_counter_lock.release()
-
-        task_thread.join(self.max_timeout)
-        runner_counter_lock.acquire()
-        self.runner_counter -= 1
-        runner_counter_lock.release()
-
-    def _start(self, tasks):
-        with mp.Pool(
-            processes=self.max_process_number,
-            initializer=init_pool_process,
-            initargs=(mp.Lock(), mp.Lock())
-        ) as process_pool:
-            result = process_pool.starmap_async(
-                self.runner,
-                tasks,
-                error_callback=self._error_callback
-            )
-            result.wait()
-
-    def start(self, tasks, max_timeout):
-        self.max_timeout = max_timeout
-        self.task_counter = len(tasks)
-        updated_tasks = [(t[0], *t[1]) for t in tasks]
-        p = mp.Process(target=self._start, args=(updated_tasks,))
-        self._work_process = p
-        p.start()
+    def start(self, tasks, max_exec_time):
+        self.task_queue = mp.Queue(maxsize=self.max_process_number)
+        publisher = threading.Thread(
+            target=self.run_publisher,
+            args=(self.task_queue, max_exec_time, tasks)
+        )
+        self.publisher = publisher
+        publisher.start()
 
     def wait(self):
-        self._work_process.join()
+        self.publisher.join()
 
     def alive_count(self):
-        return self.runner_counter
+        return self.task_queue.qsize()
 
     def wait_count(self):
-        return self.task_counter
+        return self.wait_counter
+
+    def run_publisher(self, task_queue, task_exec_time, tasks):
+        self.wait_counter = len(tasks)
+        for task in tasks:
+            self.wait_counter -= 1
 
 
 def main():
@@ -101,13 +61,14 @@ def main():
         ],
         4
     )
-    time.sleep(1)
-    print(process_controller.wait_count())
-    print(process_controller.alive_count())
-    time.sleep(3)
-    print(process_controller.wait_count())
-    print(process_controller.alive_count())
     process_controller.wait()
+    # time.sleep(1)
+    print(process_controller.wait_count())
+    print(process_controller.alive_count())
+    # time.sleep(3)
+    # print(process_controller.wait_count())
+    # print(process_controller.alive_count())
+    # process_controller.wait()
 
 
 if __name__ == "__main__":
