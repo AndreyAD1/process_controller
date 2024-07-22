@@ -1,5 +1,6 @@
 import multiprocessing as mp
 import os
+from queue import Queue
 import threading
 import time
 
@@ -26,10 +27,12 @@ class ProcessController:
         self.max_process_number = process_number
 
     def start(self, tasks, max_exec_time):
-        self.task_queue = mp.Queue(maxsize=self.max_process_number)
+        self.task_queue = Queue(maxsize=self.max_process_number)
+        self.wait_counter = len(tasks)
         publisher = threading.Thread(
             target=self.run_publisher,
-            args=(self.task_queue, max_exec_time, tasks)
+            args=(self.task_queue, max_exec_time, tasks),
+            daemon=True
         )
         self.publisher = publisher
         publisher.start()
@@ -44,9 +47,22 @@ class ProcessController:
         return self.wait_counter
 
     def run_publisher(self, task_queue, task_exec_time, tasks):
-        self.wait_counter = len(tasks)
         for task in tasks:
+            task_queue.put(True)
+            runner = threading.Thread(target=self.runner, args=(task_queue, task_exec_time, task))
             self.wait_counter -= 1
+            runner.start()
+
+        task_queue.join()
+
+    def runner(self, task_queue, max_exec_time, task):
+        func, args = task
+        task_process = mp.Process(target=func, args=args)
+        task_process.start()
+        task_process.join(max_exec_time)
+        task_queue.get()
+        task_queue.task_done()
+
 
 
 def main():
