@@ -61,6 +61,9 @@ class ProcessController:
         task_process.start()
         task_process.join(max_exec_time)
         task_process.terminate()
+        while task_process.is_alive():
+            time.sleep(0.1)
+
         task_process.close()
         task_queue.get()
         task_queue.task_done()
@@ -76,7 +79,7 @@ def main():
             (get_test_task, (3,)),
             (get_test_task, (3,)),
         ],
-        6
+        4
     )
     # process_controller.wait()
     time.sleep(0.1)
