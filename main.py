@@ -11,9 +11,9 @@ def get_test_task(timeout):
     print(f"wake up after {timeout} s : {os.getpid()}")
 
 
-def another_task(a, b, c):
+def another_task(a, b):
     time.sleep(2)
-    print("calculation result: ", a * b - c)
+    print("calculation result: ", a - b)
 
 
 class ProcessController:
@@ -60,9 +60,10 @@ class ProcessController:
         task_process = mp.Process(target=func, args=args)
         task_process.start()
         task_process.join(max_exec_time)
+        task_process.terminate()
+        task_process.close()
         task_queue.get()
         task_queue.task_done()
-
 
 
 def main():
@@ -71,20 +72,25 @@ def main():
     process_controller.start(
         [
             (get_test_task, (5,)),
-            (another_task, (5, 9, 2)),
+            (get_test_task, (2,)),
             (get_test_task, (3,)),
-            (another_task, (3, 0, 1)),
+            (get_test_task, (3,)),
         ],
-        4
+        6
     )
-    process_controller.wait()
-    # time.sleep(1)
-    print(process_controller.wait_count())
-    print(process_controller.alive_count())
-    # time.sleep(3)
-    # print(process_controller.wait_count())
-    # print(process_controller.alive_count())
     # process_controller.wait()
+    time.sleep(0.1)
+    print(process_controller.wait_count())  # 1
+    print(process_controller.alive_count())  # 3
+    time.sleep(2)
+    print(process_controller.wait_count())  # 0
+    print(process_controller.alive_count())  # 3
+    time.sleep(1)
+    print(process_controller.wait_count())  # 0
+    print(process_controller.alive_count())  # 2
+    process_controller.wait()
+    print(process_controller.wait_count())  # 0
+    print(process_controller.alive_count())  # 0
 
 
 if __name__ == "__main__":
