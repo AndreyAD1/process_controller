@@ -2,7 +2,7 @@ import unittest
 import multiprocessing
 import time
 
-from main import ProcessController
+from process_controller import ProcessController
 
 
 def test_task(timeout):
@@ -97,5 +97,4 @@ class TestProcessController(unittest.TestCase):
 
 
 if __name__ == "__main__":
-
     unittest.main()
