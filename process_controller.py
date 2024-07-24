@@ -6,6 +6,22 @@ import time
 
 
 class ProcessController:
+    """ProcessController runs the functions concurrently.
+
+    For example:
+        pc = ProcessController()
+        pc.set_max_proc(2)
+        pc.start(
+            [
+                (func1, (1, 2)),
+                (func2, (3,)),
+                (func3, tuple()),
+            ],
+            5
+        )
+        pc.wait()
+    """
+
     def __init__(self):
         self.max_process_number = None
         self.wait_counter = None
