@@ -32,12 +32,12 @@ class TestProcessController(unittest.TestCase):
                 (test_task, (10,)),
                 (test_task, (3,)),
                 # (test_task_error, tuple()),
-                (test_task, (3,)),
+                (test_task, (4,)),
                 (test_task, (1,)),
             ],
             5
         )
-        time.sleep(0.1)
+        time.sleep(0.3)
         self.assertEqual(pc.wait_count(), 2)
         self.assertEqual(pc.alive_count(), 3)
 
@@ -52,6 +52,10 @@ class TestProcessController(unittest.TestCase):
         time.sleep(1)
         self.assertEqual(pc.wait_count(), 0)
         self.assertEqual(pc.alive_count(), 2)
+
+        time.sleep(1)
+        self.assertEqual(pc.wait_count(), 0)
+        self.assertEqual(pc.alive_count(), 1)
 
         pc.wait()
         self.assertEqual(pc.wait_count(), 0)
