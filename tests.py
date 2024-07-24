@@ -1,4 +1,5 @@
 import unittest
+import multiprocessing
 import time
 
 from main import ProcessController
@@ -24,6 +25,7 @@ class TestProcessController(unittest.TestCase):
         self.assertEqual(pc.alive_count(), 0)
 
     def test_common_start(self):
+        multiprocessing.set_start_method('forkserver')
         pc = ProcessController()
         pc.set_max_proc(3)
         pc.start(
@@ -61,6 +63,39 @@ class TestProcessController(unittest.TestCase):
         self.assertEqual(pc.wait_count(), 0)
         self.assertEqual(pc.alive_count(), 0)
 
+    def test_task_error(self):
+        pc = ProcessController()
+        pc.set_max_proc(3)
+        pc.start([(test_task_error, tuple()),], 5)
+        pc.wait()
+        self.assertEqual(pc.wait_count(), 0)
+        self.assertEqual(pc.alive_count(), 0)
+
+    def test_error_and_valid_tasks(self):
+        pc = ProcessController()
+        pc.set_max_proc(2)
+        pc.start(
+            [
+                (test_task, (1,)),
+                (test_task, (2,)),
+                (test_task_error, tuple()),
+                (test_task, (1,)),
+            ],
+            5
+        )
+        time.sleep(0.3)
+        self.assertEqual(pc.wait_count(), 2)
+        self.assertEqual(pc.alive_count(), 2)
+
+        time.sleep(1)
+        self.assertEqual(pc.wait_count(), 0)
+        self.assertEqual(pc.alive_count(), 2)
+
+        time.sleep(1)
+        self.assertEqual(pc.wait_count(), 0)
+        self.assertEqual(pc.alive_count(), 0)
+
 
 if __name__ == "__main__":
+
     unittest.main()
