@@ -10,40 +10,49 @@ class ProcessController:
         self.max_process_number = None
         self.wait_counter = None
         self.task_queue = None
-        self.publisher = None
+        self.dispatcher = None
 
     def set_max_proc(self, process_number):
         self.max_process_number = process_number
 
     def start(self, tasks, max_exec_time):
         if self.max_process_number is None:
-            raise Exception("First, set max process number by set_max_proc()")
+            raise ProcessControllerException(
+                "You should call set_max_proc() first"
+            )
 
         self.task_queue = Queue(maxsize=self.max_process_number)
         self.wait_counter = len(tasks)
-        publisher = threading.Thread(
-            target=self.run_publisher,
+        dispatcher = threading.Thread(
+            target=self.__run_dispatcher,
             args=(self.task_queue, max_exec_time, tasks),
             daemon=True
         )
-        self.publisher = publisher
-        publisher.start()
+        self.dispatcher = dispatcher
+        dispatcher.start()
 
     def wait(self):
-        self.publisher.join()
+        if self.dispatcher is None:
+            raise ProcessControllerException("You should call start() first")
+
+        self.dispatcher.join()
 
     def alive_count(self):
+        if self.task_queue is None:
+            raise ProcessControllerException("You should call start() first")
+
         return self.task_queue.qsize()
 
     def wait_count(self):
+        if self.wait_counter is None:
+            raise ProcessControllerException("You should call start() first")
         return self.wait_counter
 
-    def run_publisher(self, task_queue, task_exec_time, tasks):
-        # TODO proper private methods
+    def __run_dispatcher(self, task_queue, task_exec_time, tasks):
         for task in tasks:
             task_queue.put(True)
             runner = threading.Thread(
-                target=self.runner,
+                target=self.__runner,
                 args=(task_queue, task_exec_time, task)
             )
             self.wait_counter -= 1
@@ -52,7 +61,7 @@ class ProcessController:
         task_queue.join()
 
     @staticmethod
-    def runner(task_queue, max_exec_time, task):
+    def __runner(task_queue, max_exec_time, task):
         with ExitStack() as stack:
             @stack.callback
             def complete_task():
@@ -69,3 +78,7 @@ class ProcessController:
                 time.sleep(0.1)
 
             task_process.close()
+
+
+class ProcessControllerException(Exception):
+    pass
