@@ -2,9 +2,9 @@
 The training project for multiprocessing in Python.
 
 ## Project Goal
-The ProcessController class runs the functions concurrently.
+ProcessController runs the functions concurrently.
 A client can configure the maximum number of concurrent processes and 
-the running function timeout.
+the function timeout.
 
 A common use case:
 ```python
