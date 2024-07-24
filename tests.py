@@ -33,7 +33,6 @@ class TestProcessController(unittest.TestCase):
                 (test_task, (2,)),
                 (test_task, (10,)),
                 (test_task, (3,)),
-                # (test_task_error, tuple()),
                 (test_task, (4,)),
                 (test_task, (1,)),
             ],
