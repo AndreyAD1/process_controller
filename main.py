@@ -1,3 +1,4 @@
+from contextlib import ExitStack
 import multiprocessing as mp
 import os
 from queue import Queue
@@ -9,6 +10,12 @@ def get_test_task(timeout):
     print(f"start to sleep {timeout} s : {os.getpid()}")
     time.sleep(timeout)
     print(f"wake up after {timeout} s : {os.getpid()}")
+
+
+def error_source():
+    time.sleep(1)
+    print("throw an error")
+    raise Exception("test error")
 
 
 def another_task(a, b):
@@ -47,29 +54,39 @@ class ProcessController:
         return self.wait_counter
 
     def run_publisher(self, task_queue, task_exec_time, tasks):
+        # TODO proper private methods
         for task in tasks:
             task_queue.put(True)
-            runner = threading.Thread(target=self.runner, args=(task_queue, task_exec_time, task))
+            runner = threading.Thread(
+                target=self.runner,
+                args=(task_queue, task_exec_time, task)
+            )
             self.wait_counter -= 1
             runner.start()
 
         task_queue.join()
 
-    def runner(self, task_queue, max_exec_time, task):
-        func, args = task
-        task_process = mp.Process(target=func, args=args)
-        task_process.start()
-        task_process.join(max_exec_time)
-        task_process.terminate()
-        while task_process.is_alive():
-            time.sleep(0.1)
+    @staticmethod
+    def runner(task_queue, max_exec_time, task):
+        with ExitStack() as stack:
+            @stack.callback
+            def complete_task():
+                task_queue.get()
+                task_queue.task_done()
 
-        task_process.close()
-        task_queue.get()
-        task_queue.task_done()
+            func, args = task
+            task_process = mp.Process(target=func, args=args)
+            task_process.start()
+            task_process.join(max_exec_time)
+            task_process.terminate()
+            while task_process.is_alive():
+                time.sleep(0.1)
+
+            task_process.close()
 
 
 def main():
+    # TODO full-fledged tests
     process_controller = ProcessController()
     process_controller.set_max_proc(3)
     process_controller.start(
@@ -77,6 +94,7 @@ def main():
             (get_test_task, (5,)),
             (get_test_task, (2,)),
             (get_test_task, (3,)),
+            (error_source, tuple()),
             (get_test_task, (3,)),
         ],
         4
